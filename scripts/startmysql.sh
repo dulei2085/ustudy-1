@@ -47,6 +47,10 @@ fi
 # to create log files successfully
 chown 999:999 ${MYSQL_LOG_DIR}
 
+# before launching mysql service, clear mysql logs 
+echo "clear logs generated in ${MYSQL_LOG_DIR}"
+rm ${MYSQL_LOG_DIR}/*
+
 # To specify log file name, use '--general_log_file gen.log' as needed
 # add more mysql logs
 docker run --rm -it --name ustudy-dw -v ${WORK_DIR}/mysql/data:/var/lib/mysql \
@@ -62,5 +66,11 @@ else
   echo "Launched ustudy-dw container successfully"
 fi
 
-# docker exec -u root web-mysql /bin/sh -c 'mysql -u root -p"mysql" < /root/mysql/schema/install_infocenter'
+# set container timezone to Asia/Shanghai
+#docker exec -u root ustudy-dw /bin/sh -c 'echo "Asia/Shanghai" > /etc/timezone; dpkg-reconfigure -f noninteractive tzdata'
+#if [ $? != 0 ];then
+#  echo "Failed to set container timezone to Asia/Shanghai"
+#else
+#  echo "Set timezone to Asia/Shanghai"
+#fi
 

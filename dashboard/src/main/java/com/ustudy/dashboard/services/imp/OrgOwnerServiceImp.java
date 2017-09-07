@@ -61,9 +61,13 @@ public class OrgOwnerServiceImp implements OrgOwnerService {
 	@Transactional
 	public int createItem(OrgOwner item) {
 		// Noted: Schema for table ustudy.orgowner is as below,
-		// id, name, loginname, passwd, orgtype, orgid, ctime
-		String sqlOwner = "insert into ustudy.orgowner values(?,?,?,?,?,?,?);";
+		// id, name, loginname, passwd, orgtype, orgid, role, ctime
+		String sqlOwner = "insert into ustudy.orgowner values(?,?,?,?,?,?,?,?);";
 
+		if (item.getRole() == null || !((item.getRole().compareTo("校长") == 0) ||
+				item.getRole().compareTo("考务老师") == 0))
+			throw new RuntimeException("createItem(), unsupported role type " + item.getRole());
+		
 		// insert record into dashoboard.school firstly, also auto generated keys is required.
 		KeyHolder keyH = new GeneratedKeyHolder();
 		int id = -1;    // auto generated id
@@ -78,29 +82,39 @@ public class OrgOwnerServiceImp implements OrgOwnerService {
 				psmt.setString(3, item.getLoginname());
 				psmt.setString(4, item.getPasswd());
 				
-				//todo: need to check whether orgnization id is valid for corresponding type
+				//TODO: need to check whether organization id is valid for corresponding type
 				psmt.setString(5, item.getOrgType());
 				psmt.setString(6, item.getOrgId());
-				
+				psmt.setString(7, item.getRole());
 				// account creation time should be set to current time
-				psmt.setString(7, LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+				psmt.setString(8, LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
 				
 				return psmt;
 			}
 		}, keyH);
+		
+		String msg = null;
 		if (num != 1) {
-			String msg = "createItem(), return value for OrgOwner insert is " + num;
+			msg = "createItem(), return value for OrgOwner insert is " + num;
 			logger.warn(msg);
 			throw new RuntimeException(msg);
 		}
 	
 		id = keyH.getKey().intValue();
 		if (id < 0) {
-			String msg = "createItem() failed with invalid id " + id;
+			msg = "createItem() failed with invalid id " + id;
 			logger.warn(msg);
 			throw new RuntimeException(msg);
 		}
 
+		num =  populateTeachers(item);
+		if (num < 0) { 
+			msg = "createItem(), failed to populate data for teacher. Return value is " + num;
+			logger.warn(msg);
+			throw new RuntimeException(msg);
+		}
+		else
+			logger.debug("createItem(), populated teacher data.");
 		return id;
 	}
 
@@ -167,4 +181,82 @@ public class OrgOwnerServiceImp implements OrgOwnerService {
 		return item;
 	}
 
+	@Transactional
+	private int populateTeachers(OrgOwner item) {
+		// Noted: Schema for table ustudy.teacher is as below,
+		// id, teacid, teacname, passwd, orgtype, orgid, ctime, lltime
+		String sqlOwner = "insert into ustudy.teacher values(?,?,?,?,?,?,?,?);";
+
+		// insert record into ustudy.teacher firstly, also auto generated keys is required.
+		KeyHolder keyH = new GeneratedKeyHolder();
+		int id = -1;    // auto generated id
+	
+		// need to retrieve auto id of teacher item which is returned back in header location
+		int num = jdbcT.update(new PreparedStatementCreator(){
+			@Override
+			public PreparedStatement createPreparedStatement(Connection conn) throws SQLException {
+				PreparedStatement psmt = conn.prepareStatement(sqlOwner, Statement.RETURN_GENERATED_KEYS);
+				psmt.setNull(1, java.sql.Types.INTEGER);
+				psmt.setString(2, item.getLoginname());
+				psmt.setString(3, item.getName());
+				psmt.setString(4, item.getPasswd());
+				
+				psmt.setString(5, item.getOrgType());
+				psmt.setString(6, item.getOrgId());
+				
+				// teacher creation time should be set to current time
+				psmt.setString(7, LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+				psmt.setNull(8, java.sql.Types.DATE);
+				
+				return psmt;
+			}
+		}, keyH);
+		
+		String msg = null;
+		if (num != 1) {
+			msg = "populateTeachers(), return value for populate teacher is " + num;
+			logger.warn(msg);
+			throw new RuntimeException(msg);
+		}
+	
+		id = keyH.getKey().intValue();
+		if (id < 0) {
+			msg = "populateTeachers() failed with invalid id " + id;
+			logger.warn(msg);
+			throw new RuntimeException(msg);
+		}
+		
+		// add default role_name "org_owner"
+		String sqlRoles = "insert into ustudy.teacherroles values(?,?,?)";
+		msg = null;
+		num = jdbcT.update(new PreparedStatementCreator(){
+			@Override
+			public PreparedStatement createPreparedStatement(Connection conn) throws SQLException {
+				PreparedStatement psmt = conn.prepareStatement(sqlRoles, Statement.RETURN_GENERATED_KEYS);
+				psmt.setNull(1, java.sql.Types.NULL);
+				if (item.getRole().compareTo("校长") == 0) {
+					psmt.setString(2, "org_owner");
+				} else if (item.getRole().compareTo("考务老师") == 0) {
+					psmt.setString(2, "leader");
+				} else {
+					logger.warn("populateTeachers(), role is " + item.getRole() +
+							", set teacher as default role");
+					psmt.setString(2, "teacher");
+				}
+				
+				psmt.setString(3, item.getLoginname());
+				return psmt;
+			}
+		});
+		if (num != 1) {
+			msg = "populateTeachers(), return value from default role insert is " + num;
+			logger.warn(msg);
+			throw new RuntimeException(msg);
+		}
+			
+		logger.debug("populateTeachers(), default role populated for " + item.getLoginname());
+
+		return id;
+	}
+	
 }

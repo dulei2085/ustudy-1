@@ -44,6 +44,8 @@
                 /school/update = authc, perms[school:edit]
                 /school/delete = authc, perms[school:edit]
                 /school/delete/** = authc, perms[school:edit]
+                /school/list/brife/** = authc, perms[school:view]
+                
                 <!-- shool web page filter chain -->
                 /schoolList = authc, perms[school:view]
  
@@ -54,6 +56,7 @@
                 /user/update/** = authc, perms[user:edit]
                 /user/delete = authc, perms[user:edit]
                 /user/delete/** = authc, perms[user:edit]
+                
                 <!-- user web page filter chain -->
                 /userList = authc, perms[user:view]
 
@@ -64,6 +67,7 @@
                 /owner/update/** = authc, perms[orgowner:edit]
                 /owner/delete = authc, perms[orgowner:edit]
                 /owner/delete/** = authc, perms[orgowner:edit]
+                
                 <!-- OrgOwner web page filter chain -->
                 /ownerList = authc, perms[orgowner:view]
              
@@ -118,8 +122,8 @@
         <property name="dataSource" ref="adminboard" />
         <property name="permissionsLookupEnabled" value="true"/>
         <property name="authenticationQuery" value="select passwd from ustudy.users where loginname = ?" />
-        <property name="userRolesQuery" value="select role_name from ustudy.roles where user_name = ?" />
-        <property name="permissionsQuery" value="select permissions from ustudy.perms where role_name = ?"/>
+        <property name="userRolesQuery" value="select value from ustudy.roles where user_name = ?" />
+        <property name="permissionsQuery" value="select value from ustudy.perms where role_name = ?"/>
     </bean>
     <bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator" depends-on="lifecycleBeanPostProcessor"/>
         <bean class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor">
